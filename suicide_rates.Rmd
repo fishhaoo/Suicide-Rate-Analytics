@@ -1,0 +1,249 @@
+---
+title: "Suicides_Analytics"
+author: "Ng Wei Xiang"
+date: "5/25/2021"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Suicides Analytics
+
+This is an R Markdown document of the personal work/project I am for practice purposes. This dataset was obtained from [kaggle](https://www.kaggle.com/russellyates88/suicide-rates-overview-1985-to-2016) and is cleaned and altered by myself for my own analytics needs.
+
+## Loading of libraries
+These libraries are used and required as tools for analytics to be performed further down.
+```{r libraries}
+library(summarytools)
+library(ggplot2)
+library(dplyr)
+library(psych) # for describeBy
+library(tidyverse) # for ancova
+library(ggpubr) # for ancova
+library(rstatix) # for ancova
+library(broom) # for ancova
+```
+
+## Dataset loading, cleaning and modifying
+Firstly, the csv file is read into a dataframe called "master". Then, a copy of "master" was created with the name "dataset1" to create a new dataset and prevent overriding of the master and original version. Then, a new dataset was created to get the total suicides number in the country. The new dataset named "sum" was then merged with "dataset1" to add the new variable into the main dataset and the variables were then renamed for more readibility. Then, the variable "gdp_for_year" was converted from character to numeric and removed the ","(comma). It is then renamed properly for better usability.
+```{r}
+# reading the CSV file
+master <- read.csv('master.csv')
+
+# to remove the column country.year because is unused
+dataset1 = master
+dataset1$country.year <- NULL
+
+# add all suicides_no by country as a new variable
+dataset2 = master
+sum2 <- aggregate(x=dataset2$suicides_no, by=list(dataset2$ï..country), FUN=sum)
+names(sum2)[1] <- "ï..country"
+
+# merging the new dataset with the main and renaming some variables
+dataset1 <- merge(dataset1, sum2, by="ï..country")
+names(dataset1)[12] <- "total_suicides_country"
+names(dataset1)[1] <- "country"
+
+# covert gdp_for_year to numeric
+dataset1$gdp_for_year.... <- as.numeric(gsub(",", "", dataset1$gdp_for_year....))
+names(dataset1)[9] <- "gdp_for_year"
+
+```
+
+## Descriptive Analysis
+### Variables
+#### Variable 1 - country
+
+This dataset consists a total of 101 countries recorded. It is a nominal categorical variable
+```{r}
+dfSummary(dataset1$country)
+```
+
+#### Variable 2 - year
+
+This dataset collected records since year 1985 up till 2016. It is a continuous variable.
+```{r}
+dfSummary(dataset1$year)
+
+```
+
+#### Variable 3 - sex
+
+This dataset collected records of 2 sex, female and male. It is a categorical binary variable.
+```{r}
+dfSummary(dataset1$sex)
+```
+
+#### Variable 4 - age
+
+This dataset collected 6 age groups. It is a nominal categoricalvariable. Ascendingly, 5-14 years, 15-24 years, 25-34 years, 35-54 years, 55-74 years, and 75+ years,
+```{r}
+dfSummary(dataset1$age)
+```
+
+#### Variable 5 - suicides_no
+
+This dataset collected suicide numbers as continuous variable from the above country and each row of record is represented by each sex, generation, year, and country. It recorded with a minimum of 0 suicides, median of 25 suicides, and maximum of 22,338 suicides. 
+```{r}
+dfSummary(dataset1$suicides_no)
+```
+
+#### Variable 6 - population
+
+This dataset recorded population of the countries as a single column with the largest country having a population of 43,805,214 and a median of 430,150. It is a discrete variable.
+```{r}
+dfSummary(dataset1$population)
+```
+
+#### Variable 7 - suicides.100k.pop
+
+This dataset recorded the number of suicides in every 100 thousand of the population in every countries. It is a continous variable with a median of 6 cases and a maximum of 225 cases.
+```{r}
+dfSummary(dataset1$suicides.100k.pop)
+```
+
+#### Variable 8 - HDI.for.year
+
+This dataset recorded the HDI for year for the countries in the dataset. 
+```{r}
+dfSummary(dataset1$HDI.for.year)
+```
+
+#### Variable 9 - gdp_for_year
+
+This dataset recorded the gdp of a country for the given year as a continuous variable.
+```{r}
+dfSummary(dataset1$gdp_for_year)
+```
+
+#### Variable 10 - gdp_per_capita
+
+This dataset recorded the gdp of a country for the given year as a continuous variable. It recorded a median of 9372 and a maximum of 126352.
+```{r}
+dfSummary(dataset1$gdp_per_capita)
+```
+
+#### Variable 11 - generation
+
+This dataset recorded 6 generations which corresponds to a certain age group. Namingly, age 5 to 14 years is **Gen Z**, age 15 to 24 is **Millenial**, age 25 to 34 is **Gen X**, age 35 to 54 is **Boomers**, age 55 to 74 is **Silent**, and age 75 and above is **G.I. Gen**.
+```{r}
+dfSummary(dataset1$generation)
+```
+
+#### Variable 12 - total_suicides_country
+
+Lastly, this variable is a self created variable to record the total number of suicides happened in a country in total as a continuous variable. It recorded a median of 9372 cases and a maximum of 126,352 cases.
+```{r}
+dfSummary(dataset1$gdp_per_capita)
+```
+## Diagnostic Analysis
+
+### Largest amount of suicides recorded by country in the dataset
+
+The first result showed the largest amount of suicdes recorded was at 1,209,742 cases which happened in Russia. The next result showed the largest number of suicides happened in 1994 and consist of male boomers. This single data was orginated back in russia and the suspected responsible cause is the Russian constitutional crisis about the political stand-off thats was resolved by military force according to [wikipedia](https://en.wikipedia.org/wiki/1993_Russian_constitutional_crisis).
+```{r}
+# to return the country that has the largest number of suicides in total across all years
+dataset1[which.max(dataset1$total_suicides_country),]
+
+# to see the details of the largest number of suicides in the country
+dataset1[which.max(dataset1$suicides_no),]
+```
+
+
+
+### Suicide numbers in different generations/age groups
+
+The result of the scatter plot shows that "Boomers"(Age 35 to 54) had the highest suicide numbers and rates which at most reaching more than 20000. It is followed by the "Silent" generation(Age 55 to 74) and then Gen X(Age 25 to 34). G.I generation(Age 75 and above) was the second last and the least was Gen Z(Age 5 to 14). The blue line was the mean line indicating the mean number of suicides in generations. Based on the result shown, it is obvious to see the boomers having a very high numbers of suicides at an average of 457 cases. It could be due to the stress of work, life, family and the combination of it. With price inflation getting serious each generation, the responsibility to take good care of the family is constant but the pay from work might not provide sufficient support. The "Silent" generation followed next at a mean of 279 cases which could be due to the same reason as the boomers. Interestingly, both of this age group was in the right age to undergo midlife crisis which could be the reason. 
+```{r}
+# scatter plot to see suicides numbers in different generations
+ggplot(dataset1) + aes(x=generation, y=suicides_no) + geom_point() + stat_summary(fun.y=mean, aes(group=1), geom="line", colour="blue")
+
+# mean suicide numbers in different generations
+aggregate(x = dataset1$suicides_no,
+          by = list(dataset1$generation),
+          FUN = mean)
+
+```
+
+### Suicide numbers in different sex
+
+The result of the scatter plot shows that male has far higher amount of suicide numbers as compared to female. The highest amount of female suicides was shy of 5000 while the highest amount of suicides in male was at 25000. This amount is higly imbalance and showed that male appeared to be much weaker than what we thought in mind. The amountof stress and pressure they had to go through is huge and unimaginable. The result of descriptive statistics by sex showed the in average, females had a mean of 112 suicides and maximum of 4053. AT the same time, males had a mean of 373 and maximum of 22338. Mental health in male should be a focus and issue to be solved or not the problem will continue to worsen in the future whjich no one would like to see it happen.
+```{r}
+# box plot to see suicides numbers in different sex
+ggplot(dataset1) + aes(x=sex, y=suicides_no) + geom_boxplot()
+
+# desxcriptive statistics of suicide numbers by sex
+describeBy(dataset1$suicides_no, dataset1$sex)
+
+```
+
+The next scatter plot is the combination of both above, which is the suicide numbers in sex grouped by generation. By combining the insights from above, the plot shows same result whereby male generally have a higher suicide numbers and boomers are the generation had more serious numbers. Thus, it is seen obviously that boomer males take up a very big part and numbers in suicide numbers worldwide.
+```{r}
+# scatter plot to see suicide numbers in sex grouped by generation
+ggplot(dataset1) + aes(x=sex, y=suicides_no) + geom_point() + facet_grid(~ generation)
+```
+
+### Suicide numbers trend in years
+
+The following scatter plot shows the trend of suicide numbers by year grouped by gender. We can see an obvious upgrowing trend whereby the maximum numbers in each year is growing. Obiously without a doubt that the plot shows male has higher suicide numbers as compared to female adding the observations we got from above already. The number of suicide numbers saw a peak at 1994. 
+```{r}
+ggplot(dataset1) + aes(x=year, y=suicides_no) + geom_point() + facet_grid(~ sex)
+```
+
+## Predictive Analysis
+
+#### Multiple linear regression model
+A multiple linear regression model was built with the formula of $Y = B_0 + b_1Population + b_2GdpForYear + b_3GdpPerCapita$ which I took suicides_no as response variable, population, gdp_per_year and gdp_per_capita as the predictor variable. The result showed that all of the predictor variables are significant in predicting the suicide numbers. The model also recorded an $R^{2}$ value of 0.3914 which means the model fits in 39% well. It suggests that to increase the suicide numbers, the more the population is and the the lower the gdp is the country in that year. That sounds similar to those country where their GDP growth is low but population is constantly high. 
+
+```{r}
+set.seed(100) #generates random numbers to reproduce results of random sampling
+trainingRowIndex <- sample(1:nrow(dataset1), 0.8*nrow(dataset1))  # row indices for training data
+trainingData <- dataset1[trainingRowIndex, ]  # model training data
+testData  <- dataset1[-trainingRowIndex, ]   # test data
+
+lmMod <- lm(suicides_no ~ population + gdp_for_year + gdp_per_capita.... , data=trainingData)
+distPred <- predict(lmMod, testData)
+
+summary(lmMod)
+summary(distPred)
+
+plot(lmMod)
+```
+1. The first plot of residuals vs fitted plot shows heteroscedasticity whereby the plots seems to be heavily skewed to the left. This means that the data we had in this dataset have a very large range between each other. According to the assumption of linear regression, heteroscedasticity cannot be accepted and thus we cannot put a high trust on the model and result.
+
+2. The second plot shows a heavy-tailed Q-Q plot.This proves that we have extreme outlier values in our model. There is much more data located at the extremes of the distributions.
+
+3. The third plot of scale-location also suggest similar results as the first plot which heteroscedasticity was found in the plot.
+
+4. The fourth plot which is a residuals vs leverage detects heteroskedasticity similar plot 1 and plot 3. However, there are no influential points outside the dotted line(cooks'distance) and in this plot, there are none thus suggest that all the values here are respectable and usable.  
+
+### ANCOVA test
+An Ancova test was performed to compare all the variables and check that are ther any significant variables in affecting suicides number.
+```{r}
+ancMod <- dataset1 %>% anova_test(suicides_no ~ country + sex + population + gdp_for_year + generation)
+get_anova_table(ancMod)
+```
+Based on the result, I decided to remove gdp_for_year since it is close to the significant level of 0.05 even though it is just show of it. At the same time, country and population was also removed since the p-value does not seem to bring any meaning at 0. Then, I noticed that the remaining variables are sex and generation which both of them are categorical variable so another anova test will generate a more accurate result.
+
+### ANOVA test
+An Anova test was then performed to check for the variables against suicide numbers. 
+```{r}
+anvMod <- aov(suicides_no ~ sex * generation, data=dataset1)
+summary(anvMod)
+
+plot(anvMod)
+
+levene_test(suicides_no ~ sex * generation, data=dataset1)
+```
+The result showed that both variable "sex" and "generation" are significant based on the f-value which are less than 0.05. However, the levene's test showed a p-value that is lesser than 0.05 which we cannot assume homogeinity of residual variances for all groups.
+
+1. The first plot showed a residuals vs fitted plot showed that point 20997, and 21081 are detected as outliers that can affect normality and homogeneity of varience. 
+
+2. The second plot of normal Q-Q plot showed a heavily skewed tail and does not follow along the reference line. This is a prove that normality is violated. 
+
+Based on all the explanations above, the result suggests that this is not a good model since it violates all the assumptions for a model. Thus, we can only take reference and not trsut fully and take action based on the results. 
+
+## Conclusion
+The dataset obtained from Kaggle was big and sufficient to discover many insights related about suicides. It is obvious that the data are highly skewed due to the appearance of extreme values in the dataset. However, that was not a very big thing as there is no perfect data available. What we learnt was that most of the suicide cases happened among males in the Boomer generation which is in the age group of 35 to 54. And worryingly, the plots showed that the number of cases are growing year by year. Thus, in this era where we emphasize of gender equality and woman power, men do also need attention to help and ease their burden off. If not, the figures will just grow and getting more serious. The predictive model built showed that population, GDP of the country do affect the numbers. However, the model seemed to have heavily skewed data and we should not highly trust in the model and more research and data are required to obtain a more accurate and relevant prediction.
